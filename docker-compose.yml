@@ -1,0 +1,115 @@
+version: "3"
+services:
+  liferay:
+    build:
+      dockerfile: liferay/Dockerfile
+      context: .
+      args:
+        - LIFERAY_IMAGE=liferay/portal:7.3.5-ga6
+        - ELASTIC_APM_AGENT_VERSION=1.21.0
+        - ELASTIC_APM_APPLICATION_PACKAGES=
+    ports:
+      - 8080:8080
+    environment:
+      LIFERAY_JVM_OPTS: >-
+        -javaagent:/opt/liferay/elastic-apm-agent.jar
+        -Delastic.apm.service_name=liferay
+        -Delastic.apm.application_packages=com.liferay,${ELASTIC_APM_APPLICATION_PACKAGES}
+        -Delastic.apm.server_url=http://apm-server:8200
+    volumes:
+      - ./liferay/deploy:/mnt/liferay/deploy
+      - ./liferay/files:/mnt/liferay/files
+    depends_on:
+      - elasticsearch
+  elasticsearch:
+    build:
+      dockerfile: elasticsearch/Dockerfile
+      context: .
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.9.3
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+      - filebeat
+      - metricbeat
+  apm-server:
+    build:
+      dockerfile: apm-server/Dockerfile
+      context: .
+    cap_add: ["CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID"]
+    cap_drop: ["ALL"]
+    command: >
+      apm-server -e
+        -E apm-server.rum.enabled=true
+        -E setup.kibana.host=kibana:5601
+        -E setup.template.settings.index.number_of_replicas=0
+        -E apm-server.kibana.enabled=true
+        -E apm-server.kibana.host=kibana:5601
+        -E output.elasticsearch.hosts=["elasticsearch:9200"]
+    depends_on:
+      - elasticsearch
+      - kibana
+  filebeat:
+    build:
+      dockerfile: filebeat/Dockerfile
+      context: .
+    user: root
+    command: >
+      filebeat -e --strict.perms=false
+      -E setup.kibana.host=kibana:5601
+      -E output.elasticsearch.hosts=["elasticsearch:9200"]
+    volumes:
+      - filebeat_data:/usr/share/filebeat/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers/:/var/lib/docker/containers/:ro
+    depends_on:
+      - liferay
+      - elasticsearch
+  metricbeat:
+    build:
+      dockerfile: metricbeat/Dockerfile
+      context: .
+    user: root
+    command: >
+      metricbeat -e --strict.perms=false
+      -E setup.kibana.host=kibana:5601
+      -E output.elasticsearch.hosts=["elasticsearch:9200"]
+    volumes:
+      - metricbeat_data:/usr/share/metricbeat/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      # - /proc:/hostfs/proc:ro
+      # - /:/hostfs:ro
+    depends_on:
+      - elasticsearch
+  database:
+    image: mysql:5.7
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: lportal
+      MYSQL_USER: liferay
+      MYSQL_PASSWORD: liferay
+      MYSQL_ROOT_PASSWORD: secret
+    ports:
+      - 3306:3306
+    volumes:
+      - database_data:/var/lib/mysql
+    cap_add:
+      - SYS_NICE
+
+volumes:
+  liferay_data:
+  elasticsearch_data:
+  filebeat_data:
+  metricbeat_data:
+  database_data:
