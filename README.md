@@ -41,7 +41,7 @@ docker-compose build \
 --build-arg ELASTIC_APM_APPLICATION_PACKAGES=com.example
 ```
 
-> In this example, it will start Liferay DXP 7.3.10 GA1, install and attach Elastic APM Java Agent 1.21.0 and track `com.liferay` (always included by default in `docker-compose.yml`) and `com.example`.
+In the example above, it will start Liferay DXP 7.3.10 GA1, install and attach Elastic APM Java Agent 1.21.0 and track `com.liferay` (always included by default in `docker-compose.yml`) and `com.example`.
 
 ### Run
 
