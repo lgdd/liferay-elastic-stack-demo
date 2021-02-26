@@ -2,14 +2,18 @@
 
 An example of using the Elastic Stack with Liferay and benefit from Elastic Observability features.
 
-- [Components](#components)
+- [Components Overview](#components-overview)
 - [Getting Started](#getting-started)
+  - [Build](#build)
+  - [Customize](#customize)
+  - [Run](#run)
+  - [Explore](#explore)
 - [Screenshots](#screenshots)
   - [Elastic Observability](#elastic-observability)
   - [Docker Containers Metrics](#docker-containers-metrics)
   - [Liferay Elastic APM](#liferay-elastic-apm)
 
-## Components
+## Components Overview
 
 - [Liferay](https://www.liferay.com/products/dxp): our main application
 - [Elasticsearch](https://www.elastic.co/elasticsearch/): the search engine for Liferay & the data store for our containers metrics and logs
